@@ -3449,7 +3449,7 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         {
           computeSignalling(pcPic, pcSlice);
         }
-        // mmlab start: use opencv to visualize frame
+  // mmlab start: use opencv to visualize frame
 #if VISUAL_FRAME_INFO
         int frameWidth = pcPic->getOrigBuf().Y().width;       // find width
         int frameHeight = pcPic->getOrigBuf().Y().height;       // find height
@@ -3460,11 +3460,8 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);        // make it displayable
         // cv::imshow("curFrame", curFrame);
         // cv::waitKey(0);
-        // torch::Tensor t = torch::tensor({1.0, 2.0, 3.0, 4.0});
-        // std::cout << "cuda is:" << torch::cuda::is_available() << std::endl;
-        // std::cout << t << std::endl;
         // delete org;       // delete memory
-        // mmlab end
+  // mmlab end
 #endif
         m_pcSliceEncoder->precompressSlice( pcPic );
 #if GREEN_METADATA_SEI_ENABLED

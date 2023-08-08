@@ -299,6 +299,7 @@ void EncCu::compressCtu(CodingStructure &cs, const UnitArea &area, const unsigne
   tempCS->prevQP[ChannelType::LUMA] = bestCS->prevQP[ChannelType::LUMA] = prevQP[ChannelType::LUMA];
 
   xCompressCU(tempCS, bestCS, partitioner);
+
   cs.slice->m_mapPltCost[0].clear();
   cs.slice->m_mapPltCost[1].clear();
   // all signals were already copied during compression if the CTU was split - at this point only the structures are copied to the top level CS
@@ -332,7 +333,6 @@ void EncCu::compressCtu(CodingStructure &cs, const UnitArea &area, const unsigne
   // reset context states and uninit context pointer
   m_CABACEstimator->getCtx() = m_CurrCtx->start;
   m_CurrCtx                  = 0;
-
 
   // Ensure that a coding was found
   // Selected mode's RD-cost must be not MAX_DOUBLE.
@@ -501,9 +501,9 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   int frameHeight = tempCS->area.Y().height;     // find height
   int posX = tempCS->area.Y().lumaPos().x;
   int posY = tempCS->area.Y().lumaPos().y;
-  std::cout << "width:" << frameWidth << std::endl;
+  std::cout << "width:" << frameWidth;
   std::cout << "height" << frameHeight << std::endl;
-  std::cout << "x:" << posX << std::endl;
+  std::cout << "x:" << posX;
   std::cout << "y:" << posY << std::endl;
   // int16_t *org = new int16_t[frameWidth * frameHeight];       // allocate memory
   // std::copy(tempCS->area.Y().buf, tempCS->area.Y().buf + frameWidth * frameHeight, org);        // copy data to memory
@@ -511,7 +511,6 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   // cv::Mat curFrame;
   // curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);
   // cv::imshow("CS", curFrame);
-  // cv::waitKey(1000);
   // cv::destroyAllWindows(); 
   // delete org;
 #endif

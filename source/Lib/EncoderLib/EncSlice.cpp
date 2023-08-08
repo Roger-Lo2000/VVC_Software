@@ -47,6 +47,9 @@
 
 #include <math.h>
 
+#include <opencv2/opencv.hpp>
+#include <string>
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -1720,7 +1723,38 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       }
     }
   }
-
+#if VISUAL_CU_SPLIT
+  int YFrameWidth = cs.picture->getOrigBuf().Y().width;       // find luma width
+  int YFrameHeight = cs.picture->getOrigBuf().Y().height;       // find luma height
+  int CbFrameWidth = cs.picture->getOrigBuf().Cb().width;       // find luma width
+  int CbFrameHeight = cs.picture->getOrigBuf().Cb().height;       // find luma height
+  int CrFrameWidth = cs.picture->getOrigBuf().Cr().width;       // find luma width
+  int CrFrameHeight = cs.picture->getOrigBuf().Cr().height;       // find luma height
+  int Ysize = YFrameWidth * YFrameHeight;
+  int Cbsize = CbFrameWidth * CbFrameHeight;
+  int Crsize = CrFrameWidth * CrFrameHeight;
+  int16_t *YOrg = new int16_t[Ysize];       // allocate memory
+  int16_t *CbOrg = new int16_t[Cbsize];
+  int16_t *CrOrg = new int16_t[Crsize];
+  // int16_t *Org = new int16_t[size * 3];
+  std::copy(cs.picture->getOrigBuf().Y().buf, cs.picture->getOrigBuf().Y().buf + YFrameWidth * YFrameHeight, YOrg);        // copy data to memory
+  std::copy(cs.picture->getOrigBuf().Cb().buf, cs.picture->getOrigBuf().Cb().buf + CbFrameWidth * CbFrameHeight, CbOrg);  
+  std::copy(cs.picture->getOrigBuf().Cr().buf, cs.picture->getOrigBuf().Cr().buf + CrFrameWidth * CrFrameHeight, CrOrg);  
+  // std::cout << YOrg << std::endl;
+  cv::Mat YCurFrameBuf(YFrameHeight, YFrameWidth, CV_16UC1, YOrg);        // make it to cv Mat format
+  cv::Mat YCurFrame;
+  cv::Mat CbCurFrameBuf(CbFrameHeight, CbFrameWidth, CV_16UC1, CbOrg);        // make it to cv Mat format
+  cv::Mat CbCurFrame;
+  cv::Mat CrCurFrameBuf(CrFrameHeight, CrFrameWidth, CV_16UC1, CrOrg);        // make it to cv Mat format
+  cv::Mat CrCurFrame;
+  YCurFrameBuf.convertTo(YCurFrame, CV_8UC1, 1./4.);        // make it displayable
+  CbCurFrameBuf.convertTo(CbCurFrame, CV_8UC1, 1./4.); 
+  CrCurFrameBuf.convertTo(CrCurFrame, CV_8UC1, 1./4.); 
+  // delete Org;
+  delete YOrg;
+  delete CbOrg;
+  delete CrOrg;
+#endif
   // for every CTU in the slice
   for( uint32_t ctuIdx = 0; ctuIdx < pcSlice->getNumCtuInSlice(); ctuIdx++ )
   {
@@ -1899,6 +1933,43 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       countFeatures(m_featureCounter, cs,ctuArea);
       pcPic->setFeatureCounter(m_featureCounter);
 #endif
+
+#if VISUAL_CU_SPLIT
+  for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){
+    CompArea lumaArea = cu.block(COMPONENT_Y);
+    int cuX = lumaArea.x;
+    int cuY = lumaArea.y;
+    int cuW = lumaArea.width;
+    int cuH = lumaArea.height;
+    cv::Point pt1 = cv::Point(cuX,cuY);
+    cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
+    // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
+    cv::rectangle(YCurFrame, pt1, pt2, 0, 1);
+  }
+  for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
+    CompArea CromaArea = cu.block(COMPONENT_Cb);
+    int cuX = CromaArea.x;
+    int cuY = CromaArea.y;
+    int cuW = CromaArea.width;
+    int cuH = CromaArea.height;
+    cv::Point pt1 = cv::Point(cuX,cuY);
+    cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
+    // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
+    cv::rectangle(CbCurFrame, pt1, pt2, 0, 1);
+  }
+  for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
+    CompArea CromaArea = cu.block(COMPONENT_Cr);
+    int cuX = CromaArea.x;
+    int cuY = CromaArea.y;
+    int cuW = CromaArea.width;
+    int cuH = CromaArea.height;
+    cv::Point pt1 = cv::Point(cuX,cuY);
+    cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
+    // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
+    cv::rectangle(CrCurFrame, pt1, pt2, 0, 1);
+  }
+#endif
+
     }
 #if K0149_BLOCK_STATISTICS
     getAndStoreBlockStatistics(cs, ctuArea);
@@ -2004,6 +2075,17 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       }
     }
   }
+#if VISUAL_CU_SPLIT
+  std::string YDir = "/home/ray/vtm-test/pic/Y_";
+  std::string CbDir = "/home/ray/vtm-test/pic/Cb_";
+  std::string CrDir = "/home/ray/vtm-test/pic/Cr_";
+  std::string YFilename = YDir + std::to_string(cs.picture->getPOC()) + ".png";
+  std::string CbFilename = CbDir + std::to_string(cs.picture->getPOC()) + ".png";
+  std::string CrFilename = CrDir + std::to_string(cs.picture->getPOC()) + ".png";
+  cv::imwrite(YFilename, YCurFrame);
+  cv::imwrite(CbFilename, CbCurFrame);
+  cv::imwrite(CrFilename, CrCurFrame);
+#endif
 }
 
 void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, uint32_t &numBinsCoded )
