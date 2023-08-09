@@ -3449,7 +3449,7 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         {
           computeSignalling(pcPic, pcSlice);
         }
-  // mmlab start: use opencv to visualize frame
+  // mmlab start: Visualize frame
 #if VISUAL_FRAME_INFO
         int frameWidth = pcPic->getOrigBuf().Y().width;       // find width
         int frameHeight = pcPic->getOrigBuf().Y().height;       // find height
@@ -3458,9 +3458,9 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         cv::Mat curFrameBuf(frameHeight, frameWidth, CV_16UC1, org);        // make it to cv Mat format
         cv::Mat curFrame;
         curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);        // make it displayable
-        // cv::imshow("curFrame", curFrame);
-        // cv::waitKey(0);
-        // delete org;       // delete memory
+        cv::imshow("curFrame", curFrame);
+        cv::waitKey(1000);
+        delete org;       // delete memory
   // mmlab end
 #endif
         m_pcSliceEncoder->precompressSlice( pcPic );

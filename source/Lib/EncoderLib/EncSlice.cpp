@@ -1736,11 +1736,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   int16_t *YOrg = new int16_t[Ysize];       // allocate memory
   int16_t *CbOrg = new int16_t[Cbsize];
   int16_t *CrOrg = new int16_t[Crsize];
-  // int16_t *Org = new int16_t[size * 3];
   std::copy(cs.picture->getOrigBuf().Y().buf, cs.picture->getOrigBuf().Y().buf + YFrameWidth * YFrameHeight, YOrg);        // copy data to memory
   std::copy(cs.picture->getOrigBuf().Cb().buf, cs.picture->getOrigBuf().Cb().buf + CbFrameWidth * CbFrameHeight, CbOrg);  
   std::copy(cs.picture->getOrigBuf().Cr().buf, cs.picture->getOrigBuf().Cr().buf + CrFrameWidth * CrFrameHeight, CrOrg);  
-  // std::cout << YOrg << std::endl;
   cv::Mat YCurFrameBuf(YFrameHeight, YFrameWidth, CV_16UC1, YOrg);        // make it to cv Mat format
   cv::Mat YCurFrame;
   cv::Mat CbCurFrameBuf(CbFrameHeight, CbFrameWidth, CV_16UC1, CbOrg);        // make it to cv Mat format
@@ -1750,10 +1748,28 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   YCurFrameBuf.convertTo(YCurFrame, CV_8UC1, 1./4.);        // make it displayable
   CbCurFrameBuf.convertTo(CbCurFrame, CV_8UC1, 1./4.); 
   CrCurFrameBuf.convertTo(CrCurFrame, CV_8UC1, 1./4.); 
-  // delete Org;
   delete YOrg;
   delete CbOrg;
   delete CrOrg;
+  // RGB pic
+  cv::Mat lumaYOrgSplit;
+  cv::Mat cromaCbOrgSplit;
+  cv::Mat cromaCrOrgSplit;
+  lumaYOrgSplit = YCurFrame.clone();
+  cromaCbOrgSplit = CbCurFrame.clone();
+  cromaCrOrgSplit = CrCurFrame.clone();
+  cv::resize(cromaCbOrgSplit, cromaCbOrgSplit, YCurFrame.size(), 0, 0, 1);
+  cv::resize(cromaCrOrgSplit, cromaCrOrgSplit, YCurFrame.size(), 0, 0, 1);
+  std::vector<cv::Mat> colorVec;
+  colorVec.push_back(lumaYOrgSplit);
+  colorVec.push_back(cromaCbOrgSplit);
+  colorVec.push_back(cromaCrOrgSplit);
+  
+  cv::Mat lumaSplit; // BGR format for luma split
+  cv::merge(colorVec, lumaSplit);
+  cv::cvtColor(lumaSplit, lumaSplit, cv::COLOR_YUV2BGR);
+  cv::Mat chromaSplit; // BGR format for chroma split
+  chromaSplit = lumaSplit.clone();
 #endif
   // for every CTU in the slice
   for( uint32_t ctuIdx = 0; ctuIdx < pcSlice->getNumCtuInSlice(); ctuIdx++ )
@@ -1945,6 +1961,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
     // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
     cv::rectangle(YCurFrame, pt1, pt2, 0, 1);
+    cv::rectangle(lumaSplit, pt1, pt2, 0, 1);
   }
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
     CompArea CromaArea = cu.block(COMPONENT_Cb);
@@ -1956,6 +1973,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
     // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
     cv::rectangle(CbCurFrame, pt1, pt2, 0, 1);
+    cv::rectangle(chromaSplit, pt1 * (YCurFrame.rows / CbCurFrame.rows), pt2 * (YCurFrame.rows / CbCurFrame.rows), 0, 1);
   }
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
     CompArea CromaArea = cu.block(COMPONENT_Cr);
@@ -2076,15 +2094,23 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #if VISUAL_CU_SPLIT
-  std::string YDir = "/home/ray/vtm-test/pic/Y_";
-  std::string CbDir = "/home/ray/vtm-test/pic/Cb_";
-  std::string CrDir = "/home/ray/vtm-test/pic/Cr_";
-  std::string YFilename = YDir + std::to_string(cs.picture->getPOC()) + ".png";
-  std::string CbFilename = CbDir + std::to_string(cs.picture->getPOC()) + ".png";
-  std::string CrFilename = CrDir + std::to_string(cs.picture->getPOC()) + ".png";
+  std::string YDir = "/home/ray/vtm-test/pic/Y/";
+  std::string CbDir = "/home/ray/vtm-test/pic/U/";
+  std::string CrDir = "/home/ray/vtm-test/pic/V/";
+  std::string BgrLumaDir = "/home/ray/vtm-test/pic/BGR_luma/";
+  std::string BgrChromaDir = "/home/ray/vtm-test/pic/BGR_chroma/";
+  std::string postFix = std::to_string(cs.picture->getPOC()) + ".png";
+  std::string YFilename = YDir + postFix;
+  std::string CbFilename = CbDir + postFix;
+  std::string CrFilename = CrDir + postFix;
+  std::string BgrLumaFilename = BgrLumaDir + postFix;
+  std::string BgrChromaFilename = BgrChromaDir + postFix;
+
   cv::imwrite(YFilename, YCurFrame);
   cv::imwrite(CbFilename, CbCurFrame);
   cv::imwrite(CrFilename, CrCurFrame);
+  cv::imwrite(BgrLumaFilename, lumaSplit);
+  cv::imwrite(BgrChromaFilename, chromaSplit);
 #endif
 }
 
