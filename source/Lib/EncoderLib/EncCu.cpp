@@ -505,16 +505,20 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   std::cout << "height" << frameHeight << std::endl;
   std::cout << "x:" << posX;
   std::cout << "y:" << posY << std::endl;
-  // int16_t *org = new int16_t[frameWidth * frameHeight];       // allocate memory
-  // std::copy(tempCS->area.Y().buf, tempCS->area.Y().buf + frameWidth * frameHeight, org);        // copy data to memory
-  // cv::Mat curFrameBuf(frameHeight, frameWidth, CV_16UC1, org);        // make it to cv Mat format
-  // cv::Mat curFrame;
-  // curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);
-  // cv::imshow("CS", curFrame);
-  // cv::destroyAllWindows(); 
-  // delete org;
+
+  //cs.picture->getOrigBuf().Y().buf
+  int16_t *org = new int16_t[frameWidth * frameHeight];       // allocate memory
+  std::copy(tempCS->picture->getOrigBuf().Y().buf, tempCS->picture->getOrigBuf().Y().buf + frameWidth * frameHeight, org);        // copy data to memory
+  cv::Mat curFrameBuf(frameHeight, frameWidth, CV_16UC1, org);        // make it to cv Mat format
+  cv::Mat curFrame;
+  curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);
+  cv::resize(curFrame, curFrame, cv::Size(frameWidth*10, frameWidth*10), cv::INTER_LINEAR);
+  cv::imshow("CS", curFrame);
+  cv::waitKey(1000); 
+  delete org;
 #endif
   // mmlab end
+
   uint32_t compBegin;
   uint32_t numComp;
   bool jointPLT = false;
@@ -887,6 +891,28 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       }
       splitRdCostBest[CTU_LEVEL] = bestCS->cost;
       tempCS->splitRdCostBest = splitRdCostBest;
+      
+#if VISUAL_CU_RES_INFO
+  // mmlab start
+      int resiStride = bestCS->getResiBuf().Y().stride;
+      std::cout << resiStride << std::endl;
+      // int cuX = bestCS->area.lx();
+      // int cuY = bestCS->area.ly();
+      int cuW = bestCS->area.lwidth();
+      int cuH = bestCS->area.lheight(); 
+      int16_t *resi = new int16_t[cuW * cuH]; 
+      // for(int i=0; i<cuH; i++){
+      std::copy(bestCS->getResiBuf().Y().buf, bestCS->getResiBuf().Y().buf + cuH * cuW, resi);
+      // } 
+      cv::Mat YResiBuf(cuH, cuW, CV_16UC1, resi);        // make it to cv Mat format
+      cv::Mat YResi;
+      YResiBuf.convertTo(YResi, CV_8UC1, 1./4.);
+      delete resi;
+      cv::imshow("", YResi);
+      cv::waitKey(1000);
+      // mmlab end
+#endif
+    
     }
     else if (currTestMode.type == ETM_PALETTE)
     {

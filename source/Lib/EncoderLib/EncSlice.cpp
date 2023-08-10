@@ -1474,7 +1474,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 {
   // if bCompressEntireSlice is true, then the entire slice (not slice segment) is compressed,
   //   effectively disabling the slice-segment-mode.
-
+  
   Slice* const pcSlice    = pcPic->slices[getSliceSegmentIdx()];
 
   if (pcSlice->getSPS()->getSpsRangeExtension().getRrcRiceExtensionEnableFlag())
@@ -1724,6 +1724,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #if VISUAL_CU_SPLIT
+  // mmlab start
   int YFrameWidth = cs.picture->getOrigBuf().Y().width;       // find luma width
   int YFrameHeight = cs.picture->getOrigBuf().Y().height;       // find luma height
   int CbFrameWidth = cs.picture->getOrigBuf().Cb().width;       // find luma width
@@ -1764,12 +1765,13 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   colorVec.push_back(lumaYOrgSplit);
   colorVec.push_back(cromaCbOrgSplit);
   colorVec.push_back(cromaCrOrgSplit);
-  
+
   cv::Mat lumaSplit; // BGR format for luma split
   cv::merge(colorVec, lumaSplit);
   cv::cvtColor(lumaSplit, lumaSplit, cv::COLOR_YUV2BGR);
   cv::Mat chromaSplit; // BGR format for chroma split
   chromaSplit = lumaSplit.clone();
+  // mmlab end
 #endif
   // for every CTU in the slice
   for( uint32_t ctuIdx = 0; ctuIdx < pcSlice->getNumCtuInSlice(); ctuIdx++ )
@@ -1951,6 +1953,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
 #if VISUAL_CU_SPLIT
+  // mmlab start
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){
     CompArea lumaArea = cu.block(COMPONENT_Y);
     int cuX = lumaArea.x;
@@ -1959,9 +1962,13 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     int cuH = lumaArea.height;
     cv::Point pt1 = cv::Point(cuX,cuY);
     cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
-    // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
+    // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d] ", cuX, cuY, cuW, cuH);
     cv::rectangle(YCurFrame, pt1, pt2, 0, 1);
-    cv::rectangle(lumaSplit, pt1, pt2, 0, 1);
+    // use different color for different split mode
+    if(cu.mtDepth > 0)
+      cv::rectangle(lumaSplit, pt1, pt2, cv::Scalar(255, 0, 0), 1);
+    else
+      cv::rectangle(lumaSplit, pt1, pt2, cv::Scalar(0, 0, 255), 1);
   }
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
     CompArea CromaArea = cu.block(COMPONENT_Cb);
@@ -1974,6 +1981,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
     cv::rectangle(CbCurFrame, pt1, pt2, 0, 1);
     cv::rectangle(chromaSplit, pt1 * (YCurFrame.rows / CbCurFrame.rows), pt2 * (YCurFrame.rows / CbCurFrame.rows), 0, 1);
+    // use different color for different split mode
+    if(cu.mtDepth > 0)
+      cv::rectangle(lumaSplit, pt1, pt2, cv::Scalar(255, 0, 0), 1);
+    else
+      cv::rectangle(lumaSplit, pt1, pt2, cv::Scalar(0, 0, 255), 1);
   }
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::CHROMA), ChannelType::CHROMA)){
     CompArea CromaArea = cu.block(COMPONENT_Cr);
@@ -1986,6 +1998,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     // printf("[x,y] = [%3d,%3d], [w,h] = [%3d, %3d]\n", cuX, cuY, cuW, cuH);
     cv::rectangle(CrCurFrame, pt1, pt2, 0, 1);
   }
+  // mmlab end
 #endif
 
     }
@@ -2094,6 +2107,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #if VISUAL_CU_SPLIT
+  // mmlab start
   std::string YDir = "/home/ray/vtm-test/pic/Y/";
   std::string CbDir = "/home/ray/vtm-test/pic/U/";
   std::string CrDir = "/home/ray/vtm-test/pic/V/";
@@ -2111,6 +2125,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   cv::imwrite(CrFilename, CrCurFrame);
   cv::imwrite(BgrLumaFilename, lumaSplit);
   cv::imwrite(BgrChromaFilename, chromaSplit);
+  // mmlab end
 #endif
 }
 

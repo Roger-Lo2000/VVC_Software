@@ -3449,8 +3449,9 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         {
           computeSignalling(pcPic, pcSlice);
         }
-  // mmlab start: Visualize frame
+  
 #if VISUAL_FRAME_INFO
+  // mmlab start: Visualize frame
         int frameWidth = pcPic->getOrigBuf().Y().width;       // find width
         int frameHeight = pcPic->getOrigBuf().Y().height;       // find height
         int16_t *org = new int16_t[frameWidth * frameHeight];       // allocate memory
@@ -3473,6 +3474,7 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         }
 #endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false);
+
 #if GREEN_METADATA_SEI_ENABLED
         m_featureCounter = pcPic->getFeatureCounter();
 #endif

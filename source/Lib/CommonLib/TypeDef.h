@@ -57,8 +57,8 @@
 // mmlab start
 #define VISUAL_FRAME_INFO 0
 #define VISUAL_CU_INFO 0
-#define VISUAL_CU_SPLIT 1
-
+#define VISUAL_CU_SPLIT 0
+#define VISUAL_CU_RES_INFO 1
 // mmlab end
 
 
