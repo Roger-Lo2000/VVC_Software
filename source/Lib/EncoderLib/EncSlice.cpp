@@ -1952,6 +1952,100 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       pcPic->setFeatureCounter(m_featureCounter);
 #endif
 
+  // mmlab start
+  // for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){
+  //   printf("depth: %3d\n", cu.depth);
+  // }
+  // mmlab end
+#if VISUAL_MOTION_INFO
+  // mmlab start
+  for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){
+    CMotionBuf motion = cu.cs->getMotionBuf(ctuArea);
+    int motionH = motion.height;
+    int motionW = motion.width;
+    // printf("motion: [%3d, %3d]\n", motionW, motionH);
+    if(cs.picture->getPOC()!= 0 && cs.picture->getPOC()!= 32){
+      for(int y=0;y<motionH;y++){
+        for(int x=0;x<motionW;x++){
+          const MotionInfo &pixMi = motion.at(x, y);
+          const Mv mv0 = pixMi.mv[REF_PIC_LIST_0];
+          printf("pos: [%3d, %3d], ", ctuArea.lumaPos().x, ctuArea.lumaPos().y);
+          printf("mv: [%3d, %3d]\n", mv0.hor, mv0.ver);
+        }
+      }
+    }
+  }
+  // mmlab end
+#endif 
+
+#if VISUAL_CU_INFO 
+// mmlab start:
+  int YFrameWidth = cs.picture->getOrigBuf().Y().width;       // find luma width
+  int YFrameHeight = cs.picture->getOrigBuf().Y().height;       // find luma height
+  int CbFrameWidth = cs.picture->getOrigBuf().Cb().width;       // find luma width
+  int CbFrameHeight = cs.picture->getOrigBuf().Cb().height;       // find luma height
+  int CrFrameWidth = cs.picture->getOrigBuf().Cr().width;       // find luma width
+  int CrFrameHeight = cs.picture->getOrigBuf().Cr().height;       // find luma height
+  int Ysize = YFrameWidth * YFrameHeight;
+  int Cbsize = CbFrameWidth * CbFrameHeight;
+  int Crsize = CrFrameWidth * CrFrameHeight;
+  int16_t *YOrg = new int16_t[Ysize];       // allocate memory
+  int16_t *CbOrg = new int16_t[Cbsize];
+  int16_t *CrOrg = new int16_t[Crsize];
+  std::copy(cs.picture->getOrigBuf().Y().buf, cs.picture->getOrigBuf().Y().buf + YFrameWidth * YFrameHeight, YOrg);        // copy data to memory
+  std::copy(cs.picture->getOrigBuf().Cb().buf, cs.picture->getOrigBuf().Cb().buf + CbFrameWidth * CbFrameHeight, CbOrg);  
+  std::copy(cs.picture->getOrigBuf().Cr().buf, cs.picture->getOrigBuf().Cr().buf + CrFrameWidth * CrFrameHeight, CrOrg);  
+  cv::Mat YCurFrameBuf(YFrameHeight, YFrameWidth, CV_16UC1, YOrg);        // make it to cv Mat format
+  cv::Mat YCurFrame;
+  cv::Mat CbCurFrameBuf(CbFrameHeight, CbFrameWidth, CV_16UC1, CbOrg);        // make it to cv Mat format
+  cv::Mat CbCurFrame;
+  cv::Mat CrCurFrameBuf(CrFrameHeight, CrFrameWidth, CV_16UC1, CrOrg);        // make it to cv Mat format
+  cv::Mat CrCurFrame;
+  YCurFrameBuf.convertTo(YCurFrame, CV_8UC1, 1./4.);        // make it displayable
+  CbCurFrameBuf.convertTo(CbCurFrame, CV_8UC1, 1./4.); 
+  CrCurFrameBuf.convertTo(CrCurFrame, CV_8UC1, 1./4.); 
+  delete YOrg;
+  delete CbOrg;
+  delete CrOrg;
+  // RGB pic
+  cv::Mat lumaYOrgPic;
+  cv::Mat cromaCbOrgPic;
+  cv::Mat cromaCrOrgPic;
+
+  lumaYOrgPic = YCurFrame.clone();
+  cromaCbOrgPic = CbCurFrame.clone();
+  cromaCrOrgPic = CrCurFrame.clone();
+  cv::resize(cromaCbOrgPic, cromaCbOrgPic, YCurFrame.size(), 0, 0, 1);
+  cv::resize(cromaCrOrgPic, cromaCrOrgPic, YCurFrame.size(), 0, 0, 1);
+  std::vector<cv::Mat> colorVec;
+  colorVec.push_back(lumaYOrgPic);
+  colorVec.push_back(cromaCbOrgPic);
+  colorVec.push_back(cromaCrOrgPic);
+
+  cv::Mat OrgPic; // BGR format for Org Pic
+  cv::merge(colorVec, OrgPic);
+  cv::cvtColor(OrgPic, OrgPic, cv::COLOR_YUV2BGR);
+  // cv::imshow("org", OrgPic);
+  // cv::waitKey(1000);
+  if(cs.picture->getPOC()!= 0 && cs.picture->getPOC()!= 32){
+    for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){
+      CompArea lumaArea = cu.block(COMPONENT_Y);
+      int cuX = lumaArea.x;
+      int cuY = lumaArea.y;
+      int cuW = lumaArea.width;
+      int cuH = lumaArea.height;
+      cv::Point pt1 = cv::Point(cuX,cuY);
+      cv::Point pt2 = cv::Point(cuX + cuW, cuY + cuH);
+      cv::rectangle(OrgPic, pt1, pt2, cv::Scalar(0, 0, 0), 1);
+      cv::imshow("img", OrgPic);
+      cv::waitKey(10);
+    }
+  }
+// mmlab end
+#endif
+  
+
+
 #if VISUAL_CU_SPLIT
   // mmlab start
   for (auto &cu: cs.traverseCUs(CS::getArea(cs, ctuArea, ChannelType::LUMA), ChannelType::LUMA)){

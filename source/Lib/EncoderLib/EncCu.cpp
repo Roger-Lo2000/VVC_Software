@@ -54,6 +54,10 @@
 #include <algorithm>
 
 #include <opencv2/opencv.hpp>
+
+#include <torch/torch.h>
+#include <torch/script.h>
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -495,29 +499,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 {
   CHECK(maxCostAllowed < 0, "Wrong value of maxCostAllowed!");
 
-  // mmlab start: visualize CU
-#if VISUAL_CU_INFO 
-  int frameWidth = tempCS->area.Y().width;       // find width
-  int frameHeight = tempCS->area.Y().height;     // find height
-  int posX = tempCS->area.Y().lumaPos().x;
-  int posY = tempCS->area.Y().lumaPos().y;
-  std::cout << "width:" << frameWidth;
-  std::cout << "height" << frameHeight << std::endl;
-  std::cout << "x:" << posX;
-  std::cout << "y:" << posY << std::endl;
 
-  //cs.picture->getOrigBuf().Y().buf
-  int16_t *org = new int16_t[frameWidth * frameHeight];       // allocate memory
-  std::copy(tempCS->picture->getOrigBuf().Y().buf, tempCS->picture->getOrigBuf().Y().buf + frameWidth * frameHeight, org);        // copy data to memory
-  cv::Mat curFrameBuf(frameHeight, frameWidth, CV_16UC1, org);        // make it to cv Mat format
-  cv::Mat curFrame;
-  curFrameBuf.convertTo(curFrame, CV_8UC1, 1./4.);
-  cv::resize(curFrame, curFrame, cv::Size(frameWidth*10, frameWidth*10), cv::INTER_LINEAR);
-  cv::imshow("CS", curFrame);
-  cv::waitKey(1000); 
-  delete org;
-#endif
-  // mmlab end
 
   uint32_t compBegin;
   uint32_t numComp;
@@ -576,10 +558,15 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 
   tempCS->splitRdCostBest = nullptr;
   m_modeCtrl->initCULevel( partitioner, *tempCS );
+
+
+
 #if GDR_ENABLED
   if (m_pcEncCfg->getGdrEnabled())
   {
     bool isInGdrInterval = slice.getPic()->gdrParam.inGdrInterval;
+
+
 
     // 1.0 applicable to inter picture only
     if (isInGdrInterval)
@@ -891,25 +878,35 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       }
       splitRdCostBest[CTU_LEVEL] = bestCS->cost;
       tempCS->splitRdCostBest = splitRdCostBest;
-      
+
 #if VISUAL_CU_RES_INFO
   // mmlab start
+    // torch::Tensor resiCUTensor; 
+    // torch::TensorOptions Imgoptions;
+    if(bestCS->picture->getPOC() != 0 && bestCS->picture->getPOC() != 32){
       int resiStride = bestCS->getResiBuf().Y().stride;
-      std::cout << resiStride << std::endl;
       // int cuX = bestCS->area.lx();
       // int cuY = bestCS->area.ly();
       int cuW = bestCS->area.lwidth();
       int cuH = bestCS->area.lheight(); 
       int16_t *resi = new int16_t[cuW * cuH]; 
-      // for(int i=0; i<cuH; i++){
-      std::copy(bestCS->getResiBuf().Y().buf, bestCS->getResiBuf().Y().buf + cuH * cuW, resi);
-      // } 
+      for(int i=0; i<cuH; i++){
+        std::copy(bestCS->getResiBuf().Y().buf + i * resiStride,
+                  bestCS->getResiBuf().Y().buf + (i + 1) * resiStride,
+                  resi + i * resiStride);
+      } 
       cv::Mat YResiBuf(cuH, cuW, CV_16UC1, resi);        // make it to cv Mat format
       cv::Mat YResi;
       YResiBuf.convertTo(YResi, CV_8UC1, 1./4.);
-      delete resi;
       cv::imshow("", YResi);
       cv::waitKey(1000);
+
+      // resiCUTensor = torch::from_blob(resi, {1, 1, cuH, cuW}, Imgoptions);
+      // resiCUTensor = resiCUTensor.to(torch::kFloat32) / (4 * 255.); // turn to 0.~1. range.
+      // resiCUTensor = resiCUTensor;
+      // std::cout << resiCUTensor << std::endl;
+      delete resi;
+    }
       // mmlab end
 #endif
     

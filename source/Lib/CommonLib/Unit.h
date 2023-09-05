@@ -185,7 +185,6 @@ struct UnitArea
 {
   ChromaFormat chromaFormat;
   UnitBlocksType blocks;
-
   UnitArea() : chromaFormat(ChromaFormat::UNDEFINED) {}
   UnitArea(const ChromaFormat _chromaFormat);
   UnitArea(const ChromaFormat _chromaFormat, const Area &area);
@@ -297,7 +296,7 @@ struct CodingUnit : public UnitArea
   Slice *slice;
   ChannelType    chType;
 
-  PredMode       predMode;
+  PredMode       predMode; 
 
   uint8_t depth;     // number of all splits, applied with generalized splits
   uint8_t qtDepth;   // number of applied quad-splits, before switching to the multi-type-tree (mtt)

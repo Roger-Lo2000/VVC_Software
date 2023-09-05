@@ -3450,6 +3450,18 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
           computeSignalling(pcPic, pcSlice);
         }
   
+
+        m_pcSliceEncoder->precompressSlice( pcPic );
+#if GREEN_METADATA_SEI_ENABLED
+        pcPic->setFeatureCounter(m_featureCounter);
+        if(m_pcEncLib->getGMFAFramewise())
+        {
+          FeatureCounterStruct m_featureCounterFrameReference;
+          m_featureCounterFrameReference = m_featureCounter;
+        }
+#endif
+        m_pcSliceEncoder->compressSlice   ( pcPic, false, false);
+
 #if VISUAL_FRAME_INFO
   // mmlab start: Visualize frame
         int frameWidth = pcPic->getOrigBuf().Y().width;       // find width
@@ -3464,17 +3476,6 @@ void EncGOP::compressGOP(int pocLast, int numPicRcvd, PicList &rcListPic, std::l
         delete org;       // delete memory
   // mmlab end
 #endif
-        m_pcSliceEncoder->precompressSlice( pcPic );
-#if GREEN_METADATA_SEI_ENABLED
-        pcPic->setFeatureCounter(m_featureCounter);
-        if(m_pcEncLib->getGMFAFramewise())
-        {
-          FeatureCounterStruct m_featureCounterFrameReference;
-          m_featureCounterFrameReference = m_featureCounter;
-        }
-#endif
-        m_pcSliceEncoder->compressSlice   ( pcPic, false, false);
-
 #if GREEN_METADATA_SEI_ENABLED
         m_featureCounter = pcPic->getFeatureCounter();
 #endif

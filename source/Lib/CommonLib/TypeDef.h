@@ -55,10 +55,11 @@
 // clang-format off
 
 // mmlab start
-#define VISUAL_FRAME_INFO 0
+#define VISUAL_FRAME_INFO 1
 #define VISUAL_CU_INFO 0
 #define VISUAL_CU_SPLIT 0
-#define VISUAL_CU_RES_INFO 1
+#define VISUAL_CU_RES_INFO 0
+#define VISUAL_MOTION_INFO 0
 // mmlab end
 
 
